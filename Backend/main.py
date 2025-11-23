@@ -28,9 +28,21 @@ if SECRET_KEY == "fallback-insecure-secret-change-in-production":
     print("⚠️  WARNING: Using fallback secret key. Set SECRET_KEY in .env for production.")
 
 # --- Middleware ---
+# [FIX] Updated origins list to include your Vercel frontend
+origins = [
+    "http://localhost:5173",        # Localhost (Laptop)
+    "http://127.0.0.1:5173",        # Localhost (Laptop alternative)
+    "https://lumen-i.vercel.app",   # Your Vercel Frontend
+    "https://lumen-i.vercel.app/",  # Your Vercel Frontend (with slash)
+    os.getenv("FRONTEND_URL")       # Flexible variable from Render settings
+]
+
+# Filter out None values just in case the env var isn't set
+origins = [origin for origin in origins if origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # Specific origins for security
+    allow_origins=origins,          # Use the updated list
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
