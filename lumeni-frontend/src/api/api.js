@@ -1,9 +1,10 @@
 import axios from "axios";
 
-// [FIX] Simplified logic: Default to localhost:8000 if no env var is set.
-// We removed 'window.location.origin' to prevent it from hitting port 5173.
-const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+// [FIX] Strictly use the environment variable from your .env file
+// This ensures it connects to Render (live) instead of your laptop.
+const RAW_BASE = import.meta.env.VITE_API_URL;
 
+// Ensure we don't end up with double slashes if the env var has a trailing slash
 const API_BASE_URL = `${RAW_BASE.replace(/\/$/, "")}/api`;
 
 const apiClient = axios.create({

@@ -1,4 +1,4 @@
-// In src/notificationSocket.js (NEW FILE)
+// In src/notificationSocket.js
 
 let socket = null;
 let messageHandler = null;
@@ -14,9 +14,17 @@ export const connectNotificationSocket = (onMessage) => {
     return;
   }
 
-  // Create the new WebSocket connection
-  // This URL must match the one in your main.py
-  socket = new WebSocket("ws://127.0.0.1:8000/ws/notifications");
+  // --- [FIX START] Dynamic URL Logic ---
+  // Get the base API URL from your environment file
+  const API_URL = import.meta.env.VITE_API_URL;
+  
+  // Convert "http" -> "ws" and "https" -> "wss" automatically
+  // This ensures it works on both localhost and your secure live server
+  const WS_URL = API_URL.replace("https", "wss").replace("http", "ws");
+  
+  // Connect using the dynamic URL
+  socket = new WebSocket(`${WS_URL}/ws/notifications`);
+  // --- [FIX END] ---
 
   // --- WebSocket Event Listeners ---
 

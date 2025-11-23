@@ -20,10 +20,13 @@ import { login, signup } from "../api/auth";
 export default function AuthPage() {
   const navigate = useNavigate();
   const { setUser } = useContext(AuthContext);
-  
+
+  // [FIX] Get the API URL from the environment file
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // State for toggling password visibility
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [tab, setTab] = useState("login");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -38,15 +41,15 @@ export default function AuthPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleGoogleLogin = () => {
-    // [FIX] Added '/api' prefix to match the backend route structure
-    window.location.href = "http://127.0.0.1:8000/api/auth/login/google";
+    // [FIX] Use the dynamic API_URL instead of localhost
+    window.location.href = `${API_URL}/api/auth/login/google`;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    
+
     // Trim inputs to avoid trailing space issues
     const cleanUsername = formData.username?.trim() || "";
     const cleanPassword = formData.password?.trim() || "";
@@ -61,9 +64,9 @@ export default function AuthPage() {
           })
         );
         localStorage.setItem("token", res.data.access_token);
-        
-        // Fetch user details using the token
-        const userRes = await fetch("http://127.0.0.1:8000/api/auth/me", {
+
+        // [FIX] Use the dynamic API_URL here too
+        const userRes = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${res.data.access_token}` },
         });
         const userData = await userRes.json();
@@ -90,15 +93,14 @@ export default function AuthPage() {
   };
 
   // Shared styles for input text color (Normal + Autofill)
-  // [FIX] Using camelCase for Webkit properties to avoid console warnings
   const inputStyles = {
     "& .MuiInputBase-input": {
       color: "#001440", // Normal text color
     },
     // Fix browser autofill background and text color
     "& .MuiInputBase-input:-webkit-autofill": {
-      "WebkitBoxShadow": "0 0 0 100px white inset",
-      "WebkitTextFillColor": "#001440",
+      WebkitBoxShadow: "0 0 0 100px white inset",
+      WebkitTextFillColor: "#001440",
     },
   };
 
