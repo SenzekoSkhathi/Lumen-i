@@ -45,7 +45,7 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true);
 
   const categories = [
-    "All", "Mathematics", "Physics", "Computer Science",
+    "All", "Mathematics", "Physics", "Computer Science", "Statistics",
     "Chemistry", "Biology", "Engineering", "Business", "Arts",
   ];
 
