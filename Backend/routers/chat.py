@@ -111,7 +111,7 @@ GENERATION_CONFIG = {
 
 # Initialize Gemini with Tools
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro-latest", # Recommended: 1.5 Pro is better at tool use than 3-preview currently
+    model_name="gemini-3-pro", # Recommended: 1.5 Pro is better at tool use than 3-preview currently
     system_instruction=TUTOR_CONSTITUTION,
     safety_settings=SAFETY_SETTINGS,
     generation_config=GENERATION_CONFIG,
