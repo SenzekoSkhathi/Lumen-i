@@ -32,7 +32,7 @@ import {
   Check,
 } from "@mui/icons-material";
 import { useOutletContext } from "react-router-dom";
-import apiClient from "../api/api.js"; // [FIX] Import from the correct file with .js extension
+import apiClient from "../api/api.js"; 
 
 // --- (Markdown, Math, and Syntax Highlighter imports) ---
 import ReactMarkdown from "react-markdown";
@@ -68,9 +68,6 @@ export default function Lumeni() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [attachedFiles, setAttachedFiles] = useState([]);
   
-  // [FIX] Removed message truncation state
-  // const [expandedMessages, setExpandedMessages] = useState({});
-  
   const [copiedMessageIndex, setCopiedMessageIndex] = useState(null);
   const [messageFeedback, setMessageFeedback] = useState({});
 
@@ -83,7 +80,8 @@ export default function Lumeni() {
       setChatLoading(true); // Show a brief loading for the sidebar
       let loadedChats = [];
       try {
-        const response = await apiClient.get("/api/chat/history");
+        // [FIX] Removed /api prefix because api.js already adds it
+        const response = await apiClient.get("/chat/history");
         loadedChats = response.data; // Get the chats
       } catch (error) {
         console.error("Failed to fetch chat history:", error);
@@ -97,9 +95,6 @@ export default function Lumeni() {
         setActiveChat(null); 
         setMessages([]);
         setAttachedFiles([]);
-        
-        // [FIX] Removed message truncation state reset
-        // setExpandedMessages({}); 
         
         setMessageFeedback({});
         setChatLoading(false); // Now we are ready
@@ -147,16 +142,6 @@ export default function Lumeni() {
     });
   };
 
-  // [FIX] Removed toggleExpanded
-  /*
-  const toggleExpanded = (index) => {
-    setExpandedMessages((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
-  };
-  */
-
   // --- (handleSendMessage is largely unchanged) ---
   const handleSendMessage = async () => {
     if (!input.trim() && attachedFiles.length === 0) return;
@@ -189,7 +174,8 @@ export default function Lumeni() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post("/api/chat/send", formData, {
+      // [FIX] Removed /api prefix because api.js already adds it
+      const response = await apiClient.post("/chat/send", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -248,10 +234,6 @@ export default function Lumeni() {
     setActiveChat(null);
     setMessages([]);
     setAttachedFiles([]);
-    
-    // [FIX] Removed truncation state reset
-    // setExpandedMessages({});
-    
     setMessageFeedback({});
     // Ensure "New Chat" is at the top and selected
     setChats((prev) => [
@@ -266,10 +248,6 @@ export default function Lumeni() {
       // This is the "New Chat" placeholder
       setActiveChat(null);
       setMessages([]);
-      
-      // [FIX] Removed truncation state reset
-      // setExpandedMessages({});
-      
       setMessageFeedback({});
       return;
     }
@@ -281,14 +259,11 @@ export default function Lumeni() {
     setChatLoading(true);
     setActiveChat(chat.id);
     setMessages([]);
-    
-    // [FIX] Removed truncation state reset
-    // setExpandedMessages({});
-    
     setMessageFeedback({});
 
     try {
-      const response = await apiClient.get(`/api/chat/${chat.id}`);
+      // [FIX] Removed /api prefix because api.js already adds it
+      const response = await apiClient.get(`/chat/${chat.id}`);
       const formattedMessages = response.data.messages.map((msg) => ({
         from: msg.role === "model" ? "bot" : msg.role, 
         text: msg.content,
