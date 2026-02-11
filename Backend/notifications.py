@@ -19,12 +19,15 @@ class NotificationManager:
         self.active_connections.remove(websocket)
         print(f"Connection closed. Total clients: {len(self.active_connections)}")
 
-    async def broadcast(self, message: str):
-        """Sends a plain text message to all connected clients."""
+    async def broadcast(self, message):
+        """Sends a message (text or JSON) to all connected clients."""
         print(f"Broadcasting message to {len(self.active_connections)} clients: {message}")
         for connection in self.active_connections:
             try:
-                await connection.send_text(message)
+                if isinstance(message, (dict, list)):
+                    await connection.send_json(message)
+                else:
+                    await connection.send_text(str(message))
             except WebSocketDisconnect:
                 # Handle cases where client disconnected abruptly
                 self.disconnect(connection)

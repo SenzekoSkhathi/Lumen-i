@@ -90,7 +90,7 @@ const PlaylistGrid = ({ playlists, darkMode, collapsed }) => (
                 {pl.name}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.7, mt: 1 }}>
-                {pl.video_ids ? pl.video_ids.length : 0} videos
+                {(pl.video_count ?? (pl.video_ids ? pl.video_ids.length : 0))} videos
               </Typography>
             </CardContent>
           </Card>

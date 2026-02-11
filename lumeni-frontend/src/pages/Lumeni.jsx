@@ -82,7 +82,10 @@ export default function Lumeni() {
       try {
         // [FIX] Removed /api prefix because api.js already adds it
         const response = await apiClient.get("/chat/history");
-        loadedChats = response.data; // Get the chats
+        loadedChats = (response.data || []).map((chat) => ({
+          ...chat,
+          lastUpdated: chat.last_updated || chat.lastUpdated || "",
+        }));
       } catch (error) {
         console.error("Failed to fetch chat history:", error);
       } finally {

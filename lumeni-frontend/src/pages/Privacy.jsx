@@ -64,7 +64,7 @@ export default function Privacy() {
     setError(null);
     setSuccess(null);
     try {
-      await apiClient.delete("/api/history/clear-all");
+      await apiClient.delete("/history/clear-all");
       setSuccess("Your watch history has been successfully cleared.");
     } catch (err) {
       setError("Failed to clear watch history. Please try again.");
