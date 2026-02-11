@@ -25,7 +25,14 @@ router = APIRouter(
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.getenv("API_BASE_URL")
+if not API_BASE_URL:
+    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    if railway_domain:
+        API_BASE_URL = f"https://{railway_domain}"
+    else:
+        API_BASE_URL = "http://127.0.0.1:8000"
+
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
