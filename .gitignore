@@ -3,6 +3,7 @@ node_modules/
 venv/
 env/
 .venv*/
+.venv312/
 __pycache__/
 
 # Environment variables (Secrets)
