@@ -58,6 +58,67 @@ class HelpRequestLog(BaseModel):
 
 # --- Admin User Management ---
 
+DEMO_USERS = [
+    {
+        "email": "student.demo@lumeni.local",
+        "full_name": "Student Demo",
+        "role": "student",
+        "password": "student123",
+        "institution_id": None,
+    },
+    {
+        "email": "lecturer.demo@lumeni.local",
+        "full_name": "Lecturer Demo",
+        "role": "lecturer",
+        "password": "lecturer123",
+        "institution_id": None,
+    },
+    {
+        "email": "admin.demo@lumeni.local",
+        "full_name": "Admin Demo",
+        "role": "admin",
+        "password": "admin123",
+        "institution_id": None,
+    },
+]
+
+
+@router.post("/seed-demo-users", response_model=List[UserPublic])
+def seed_demo_users(db: Session = Depends(get_db)):
+    seeded_users: List[models.User] = []
+    now_utc = datetime.now(timezone.utc)
+
+    for payload in DEMO_USERS:
+        existing = db.query(models.User).filter(models.User.email == payload["email"]).first()
+        hashed = security.hash_password(payload["password"])
+
+        if existing:
+            existing.full_name = payload["full_name"]
+            existing.role = payload["role"]
+            existing.hashed_password = hashed
+            existing.last_login = now_utc
+            existing.institution_id = payload.get("institution_id")
+            db.add(existing)
+            seeded_users.append(existing)
+            continue
+
+        new_user = models.User(
+            email=payload["email"],
+            full_name=payload["full_name"],
+            role=payload["role"],
+            hashed_password=hashed,
+            last_login=now_utc,
+            institution_id=payload.get("institution_id"),
+        )
+        db.add(new_user)
+        seeded_users.append(new_user)
+
+    db.commit()
+    for user in seeded_users:
+        db.refresh(user)
+
+    return seeded_users
+
 @router.get("/users", response_model=List[UserPublic])
 def get_all_users(
     role: Optional[str] = Query(None, description="Filter users by role (e.g., 'admin' or 'student')"),
