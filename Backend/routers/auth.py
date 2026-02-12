@@ -74,12 +74,16 @@ def signup_user(user_data: UserCreate, session: Session = Depends(get_db)):
 
     now_utc = datetime.datetime.now(datetime.timezone.utc)
 
+    if user_data.role != "student":
+        raise HTTPException(status_code=400, detail="Invalid role for signup.")
+
     new_user = User(
         email=user_data.email,
         full_name=user_data.full_name,
         role="student",
         hashed_password=hashed_pass,
-        last_login=now_utc
+        last_login=now_utc,
+        institution_id=user_data.institution_id
     )
 
     try:
@@ -123,7 +127,14 @@ def login_for_access_token(
     session.add(user)
     session.commit()
 
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(
+        data={
+            "sub": user.email,
+            "role": user.role,
+            "institution_id": user.institution_id,
+            "user_id": user.id,
+        }
+    )
     return Token(access_token=access_token, token_type="bearer")
 
 # ====================================
@@ -216,7 +227,14 @@ async def auth_google(request: Request, session: Session = Depends(get_db)):
         print(f"Error saving Google user: {e}")
         raise HTTPException(status_code=500, detail="Error processing login.")
 
-    access_token = create_access_token(data={"sub": db_user.email})
+    access_token = create_access_token(
+        data={
+            "sub": db_user.email,
+            "role": db_user.role,
+            "institution_id": db_user.institution_id,
+            "user_id": db_user.id,
+        }
+    )
 
     frontend_redirect_url = f"{FRONTEND_URL}/google-callback?token={access_token}"
     return RedirectResponse(url=frontend_redirect_url)

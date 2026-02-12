@@ -10,6 +10,44 @@ def utc_now():
     return datetime.now(timezone.utc)
 
 # ================================
+# INSTITUTION + MODULES
+# ================================
+class Institution(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    created_at: datetime = Field(default_factory=utc_now)
+
+    users: List["User"] = Relationship(back_populates="institution")
+    modules: List["Module"] = Relationship(back_populates="institution")
+
+
+# ================================
+# USER <-> MODULE LINK
+# ================================
+class UserModule(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    module_id: int = Field(foreign_key="module.id")
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="module_links")
+    module: "Module" = Relationship(back_populates="user_links")
+
+
+class Module(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(index=True)
+    name: str
+    system_prompt: Optional[str] = None
+    institution_id: int = Field(foreign_key="institution.id")
+    created_at: datetime = Field(default_factory=utc_now)
+
+    institution: "Institution" = Relationship(back_populates="modules")
+    users: List["User"] = Relationship(back_populates="modules", link_model=UserModule)
+    user_links: List["UserModule"] = Relationship(back_populates="module")
+    materials: List["ModuleMaterial"] = Relationship(back_populates="module")
+
+# ================================
 # USER TABLE
 # ================================
 class User(SQLModel, table=True):
@@ -19,6 +57,7 @@ class User(SQLModel, table=True):
     role: str
     hashed_password: str
     avatar_url: Optional[str] = None
+    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
 
     # FIX: Use 'datetime' directly, not 'datetime.datetime'
     created_at: datetime = Field(default_factory=utc_now)
@@ -29,6 +68,9 @@ class User(SQLModel, table=True):
     playlists: List["Playlist"] = Relationship(back_populates="creator")
     chats: List["ChatHistory"] = Relationship(back_populates="user")
     watch_history: List["WatchHistory"] = Relationship(back_populates="user")
+    institution: Optional["Institution"] = Relationship(back_populates="users")
+    modules: List["Module"] = Relationship(back_populates="users", link_model=UserModule)
+    module_links: List["UserModule"] = Relationship(back_populates="user")
 
 
 # ================================
@@ -104,6 +146,20 @@ class BroadcastNotification(SQLModel, table=True):
 
 
 # ================================
+# HELP REQUESTS
+# ================================
+class HelpRequest(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    module_id: Optional[int] = Field(default=None, foreign_key="module.id")
+    message: str
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship()
+    module: Optional["Module"] = Relationship()
+
+
+# ================================
 # WATCH HISTORY
 # ================================
 class WatchHistory(SQLModel, table=True):
@@ -118,6 +174,24 @@ class WatchHistory(SQLModel, table=True):
 
 
 # ================================
+# MODULE MATERIALS
+# ================================
+class ModuleMaterial(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    module_id: int = Field(foreign_key="module.id")
+    uploader_id: int = Field(foreign_key="user.id")
+    original_filename: str
+    storage_filename: str
+    content_type: str
+    tag: str
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    module: "Module" = Relationship(back_populates="materials")
+    uploader: "User" = Relationship()
+
+
+# ================================
 # SCHEMAS
 # ================================
 class UserCreate(SQLModel):
@@ -125,6 +199,7 @@ class UserCreate(SQLModel):
     password: str
     full_name: str
     role: str
+    institution_id: Optional[int] = None
 
 class UserUpdate(SQLModel):
     full_name: str
@@ -134,7 +209,33 @@ class UserPublic(SQLModel):
     email: EmailStr
     full_name: str
     role: str
+    institution_id: Optional[int] = None
     avatar_url: Optional[str] = None
+
+class ModulePublic(SQLModel):
+    id: int
+    code: str
+    name: str
+    system_prompt: Optional[str] = None
+    institution_id: int
+
+class ModuleMaterialPublic(SQLModel):
+    id: int
+    module_id: int
+    uploader_id: int
+    original_filename: str
+    storage_filename: str
+    content_type: str
+    tag: str
+    created_at: datetime
+    updated_at: datetime
+
+class HelpRequestPublic(SQLModel):
+    id: int
+    user_id: int
+    module_id: Optional[int] = None
+    message: str
+    created_at: datetime
 
 class VideoPublic(SQLModel):
     id: int

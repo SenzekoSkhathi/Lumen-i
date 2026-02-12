@@ -26,8 +26,9 @@ import pptx
 # --- LOCAL IMPORTS ---
 # We need 'engine' to create a session inside the tool function
 from database import get_db, engine 
-from models import User, ChatHistory, Video 
+from models import User, ChatHistory, Video, Module, UserModule
 from security import get_current_user
+from ingestion import query_module_chunks
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -166,14 +167,23 @@ GENERATION_CONFIG = {
     "max_output_tokens": 4096,
 }
 
-# Initialize Gemini with Tools
-model = genai.GenerativeModel(
-    model_name="gemini-2.5-flash", # Recommended: 1.5 Pro is better at tool use than 3-preview currently
-    system_instruction=TUTOR_CONSTITUTION,
-    safety_settings=SAFETY_SETTINGS,
-    generation_config=GENERATION_CONFIG,
-    tools=[search_videos] # Register the function here
-)
+def build_model(module_guidelines: Optional[str]) -> genai.GenerativeModel:
+    system_instruction = TUTOR_CONSTITUTION
+    if module_guidelines:
+        system_instruction = (
+            system_instruction
+            + "\n\nLECTURER GUIDELINES:\n"
+            + module_guidelines
+            + "\n\nWhen using module materials, cite sources as 'Source: <name>'."
+        )
+
+    return genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=system_instruction,
+        safety_settings=SAFETY_SETTINGS,
+        generation_config=GENERATION_CONFIG,
+        tools=[search_videos],
+    )
 
 router = APIRouter(
     prefix="/api/chat",
@@ -192,6 +202,7 @@ class ChatResponse(BaseModel):
     chat_id: int
     new_message: MessageSchema
     chat_title: Optional[str] = None 
+    citations: Optional[List[str]] = None
 
 class ChatHistoryPublic(BaseModel):
     id: int
@@ -240,6 +251,26 @@ def parse_file_sync(file_bytes: bytes, filename: str, content_type: str) -> str:
         logger.error(f"Error parsing file {filename}: {e}")
         return f"\n[System Error: Failed to read file {filename}]\n"
 
+
+def get_module_for_user(module_id: int, user: User, session: Session) -> Module:
+    module = session.get(Module, module_id)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    if user.role == "admin":
+        return module
+
+    link = session.exec(
+        select(UserModule).where(
+            UserModule.user_id == user.id,
+            UserModule.module_id == module_id,
+        )
+    ).first()
+    if not link:
+        raise HTTPException(status_code=403, detail="No access to this module.")
+
+    return module
+
 # --- 4. ENDPOINTS ---
 
 @router.get("/history", response_model=List[ChatHistoryPublic])
@@ -281,6 +312,7 @@ async def send_chat_message(
     current_user: User = Depends(get_current_user),
     message: str = Form(""),  # Default to empty string if only file is sent
     chat_id: Optional[int] = Form(None),
+    module_id: Optional[int] = Form(None),
     files: List[UploadFile] = File([])
 ):
     chat_history_db: Optional[ChatHistory] = None
@@ -303,6 +335,31 @@ async def send_chat_message(
         if msg.content:
             sdk_history.append({"role": role, "parts": [msg.content]})
 
+    module_guidelines: Optional[str] = None
+    module_context: Optional[str] = None
+    citations: List[str] = []
+
+    if module_id:
+        module = get_module_for_user(module_id, current_user, session)
+        module_guidelines = module.system_prompt
+
+        docs, metas = query_module_chunks(message, module_id)
+        context_parts: List[str] = []
+        for doc, meta in zip(docs, metas):
+            source = meta.get("source") or "Module material"
+            tag = meta.get("tag") or "Material"
+            label = f"{source} ({tag})"
+            citations.append(label)
+            context_parts.append(f"[Source: {label}]\n{doc}")
+
+        if context_parts:
+            module_context = (
+                "[System: Module context follows. Use it to answer, and cite sources as 'Source: <name>'.]\n"
+                + "\n\n".join(context_parts)
+            )
+
+    model = build_model(module_guidelines)
+
     # Start the session with automatic function calling enabled
     chat_session = model.start_chat(
         history=sdk_history,
@@ -312,6 +369,9 @@ async def send_chat_message(
     # 3. Process Current Inputs
     content_parts = []
     
+    if module_context:
+        content_parts.append(module_context)
+
     if message.strip():
         content_parts.append(message)
 
@@ -344,6 +404,11 @@ async def send_chat_message(
         # run the function, feed the result back to the model, and generate the final response.
         response = await chat_session.send_message_async(content_parts)
         assistant_text = response.text
+        if citations:
+            citations_block = "\n\nSources:\n" + "\n".join(
+                [f"- {label}" for label in citations]
+            )
+            assistant_text = assistant_text + citations_block
     except Exception as e:
         logger.error(f"Gemini SDK Error: {e}")
         raise HTTPException(status_code=502, detail=f"AI Service Error: {str(e)}")
@@ -394,5 +459,6 @@ async def send_chat_message(
     return ChatResponse(
         chat_id=chat_history_db.id, 
         new_message=ai_msg_obj,
-        chat_title=new_chat_title
+        chat_title=new_chat_title,
+        citations=citations or None
     )

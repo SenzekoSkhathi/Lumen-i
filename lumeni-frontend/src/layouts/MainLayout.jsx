@@ -58,12 +58,20 @@ export default function MainLayout() {
   if (user && user.role === 'admin') {
     menuItems = [
       { text: 'Home', icon: <HomeIcon />, path: '/home' },
+      { text: 'Faculty Studio', icon: <BarChartIcon />, path: '/faculty' },
       { text: 'Dashboard', icon: <BarChartIcon />, path: '/admin' },
+      { text: 'Profile', icon: <ProfileIcon />, path: '/profile' },
+    ];
+  } else if (user && user.role === 'lecturer') {
+    menuItems = [
+      { text: 'Home', icon: <HomeIcon />, path: '/home' },
+      { text: 'Faculty Studio', icon: <BarChartIcon />, path: '/faculty' },
       { text: 'Profile', icon: <ProfileIcon />, path: '/profile' },
     ];
   } else {
     menuItems = [
       { text: 'Home', icon: <HomeIcon />, path: '/home' },
+      { text: 'Workspace', icon: <BarChartIcon />, path: '/workspace' },
       {
         text: 'Lumeni',
         icon: (

@@ -8,8 +8,9 @@ from pydantic import BaseModel
 from database import get_db
 import models, security, youtube_utils 
 from models import (
-    UserCreate, UserPublic, PlaylistImportRequest, 
-    ActiveUsersStat, UserSignupStat, BroadcastNotification
+    UserCreate, UserPublic, PlaylistImportRequest,
+    ActiveUsersStat, UserSignupStat, BroadcastNotification,
+    ModuleMaterial, HelpRequest, Module
 )
 
 # Import the notification manager to send real-time updates
@@ -33,6 +34,27 @@ class BroadcastRequest(BaseModel):
 class BroadcastUpdate(BaseModel):
     subject: str
     message: str
+
+class ContentMetricsStat(BaseModel):
+    total_modules: int
+    total_materials: int
+    total_lecturers: int
+    total_students: int
+    total_help_requests: int
+
+class ActivityItem(BaseModel):
+    type: str
+    summary: str
+    created_at: datetime
+
+class HelpRequestLog(BaseModel):
+    id: int
+    user_id: int
+    user_email: str
+    module_id: Optional[int] = None
+    module_code: Optional[str] = None
+    message: str
+    created_at: datetime
 
 # --- Admin User Management ---
 
@@ -238,4 +260,113 @@ def get_user_signups_stats(days: int = 7, db: Session = Depends(get_db)):
         count = counts_map.get(date_str, 0)
         results.append({"date": date_str, "count": count})
         
+    return results
+
+
+@router.get("/stats/content_metrics", response_model=ContentMetricsStat)
+def get_content_metrics(db: Session = Depends(get_db)):
+    total_modules = db.query(func.count(models.Module.id)).scalar() or 0
+    total_materials = db.query(func.count(ModuleMaterial.id)).scalar() or 0
+    total_lecturers = db.query(func.count(models.User.id)).filter(models.User.role == "lecturer").scalar() or 0
+    total_students = db.query(func.count(models.User.id)).filter(models.User.role == "student").scalar() or 0
+    total_help_requests = db.query(func.count(HelpRequest.id)).scalar() or 0
+
+    return {
+        "total_modules": total_modules,
+        "total_materials": total_materials,
+        "total_lecturers": total_lecturers,
+        "total_students": total_students,
+        "total_help_requests": total_help_requests,
+    }
+
+
+@router.get("/stats/recent_activity", response_model=List[ActivityItem])
+def get_recent_activity(limit: int = 20, db: Session = Depends(get_db)):
+    materials = (
+        db.query(ModuleMaterial, Module)
+        .join(Module, Module.id == ModuleMaterial.module_id)
+        .order_by(ModuleMaterial.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    help_requests = (
+        db.query(HelpRequest, Module)
+        .outerjoin(Module, Module.id == HelpRequest.module_id)
+        .order_by(HelpRequest.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    broadcasts = (
+        db.query(BroadcastNotification)
+        .order_by(BroadcastNotification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    activity: List[ActivityItem] = []
+
+    for material, module in materials:
+        module_label = module.code if module else "Module"
+        activity.append(
+            ActivityItem(
+                type="upload",
+                summary=f"Material uploaded: {material.original_filename} ({module_label})",
+                created_at=material.created_at,
+            )
+        )
+
+    for request, module in help_requests:
+        module_label = module.code if module else "General"
+        short_message = request.message[:80].strip()
+        if len(request.message) > 80:
+            short_message += "..."
+        activity.append(
+            ActivityItem(
+                type="help_request",
+                summary=f"Help request ({module_label}): {short_message}",
+                created_at=request.created_at,
+            )
+        )
+
+    for notice in broadcasts:
+        summary = notice.subject or "Broadcast"
+        activity.append(
+            ActivityItem(
+                type="broadcast",
+                summary=f"Broadcast sent: {summary}",
+                created_at=notice.created_at,
+            )
+        )
+
+    activity.sort(key=lambda item: item.created_at, reverse=True)
+    return activity[:limit]
+
+
+@router.get("/stats/help_requests", response_model=List[HelpRequestLog])
+def get_help_request_logs(limit: int = 20, db: Session = Depends(get_db)):
+    rows = (
+        db.query(HelpRequest, Module, models.User)
+        .outerjoin(Module, Module.id == HelpRequest.module_id)
+        .join(models.User, models.User.id == HelpRequest.user_id)
+        .order_by(HelpRequest.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    results: List[HelpRequestLog] = []
+    for request, module, user in rows:
+        results.append(
+            HelpRequestLog(
+                id=request.id,
+                user_id=request.user_id,
+                user_email=user.email,
+                module_id=request.module_id,
+                module_code=module.code if module else None,
+                message=request.message,
+                created_at=request.created_at,
+            )
+        )
+
     return results

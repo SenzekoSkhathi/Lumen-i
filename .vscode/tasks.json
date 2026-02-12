@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Lumeni API",
+			"type": "shell",
+			"command": "C:/Users/senze/OneDrive/Documents/Lumeni/.venv312/Scripts/python.exe",
+			"args": [
+				"Backend/main.py"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Lumeni API",
+			"type": "shell",
+			"command": "C:/Users/senze/OneDrive/Documents/Lumeni/.venv312/Scripts/python.exe",
+			"args": [
+				"Backend/main.py"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Lumeni API (venv312)",
+			"type": "shell",
+			"command": "C:/Users/senze/OneDrive/Documents/Lumeni/.venv312/Scripts/python.exe",
+			"args": [
+				"Backend/main.py"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

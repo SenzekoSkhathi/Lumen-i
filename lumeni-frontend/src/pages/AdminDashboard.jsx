@@ -108,6 +108,10 @@ const getChartOptions = (darkMode) => ({
 export default function AdminDashboard() {
   const [activeUsers, setActiveUsers] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [contentMetrics, setContentMetrics] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const [graphFilter, setGraphFilter] = useState("7D");
   const [chartData, setChartData] = useState(null);
@@ -125,6 +129,9 @@ export default function AdminDashboard() {
         // [FIX] Removed /api prefix
         const active = await apiClient.get("/admin/stats/active_users");
         setActiveUsers(active.data.active_users);
+
+        const metrics = await apiClient.get("/admin/stats/content_metrics");
+        setContentMetrics(metrics.data);
       } catch (err) {
         console.error("Failed to load stats:", err);
       } finally {
@@ -132,6 +139,24 @@ export default function AdminDashboard() {
       }
     }
     loadBaseStats();
+  }, []);
+
+  useEffect(() => {
+    async function loadActivity() {
+      setActivityLoading(true);
+      try {
+        const activity = await apiClient.get("/admin/stats/recent_activity");
+        const help = await apiClient.get("/admin/stats/help_requests");
+        setRecentActivity(Array.isArray(activity.data) ? activity.data : []);
+        setHelpRequests(Array.isArray(help.data) ? help.data : []);
+      } catch (err) {
+        console.error("Failed to load activity:", err);
+      } finally {
+        setActivityLoading(false);
+      }
+    }
+
+    loadActivity();
   }, []);
 
   // --- Load chart data ---
@@ -205,11 +230,17 @@ export default function AdminDashboard() {
           <Typography variant="h6" sx={{ color: darkMode ? "#aaa" : "#555" }}>
             Active users
           </Typography>
+          <Typography variant="h4" sx={{ mt: 1 }}>
+            {loading ? "--" : activeUsers}
+          </Typography>
         </Paper>
 
         <Paper sx={panelStyle(darkMode)} onClick={() => navigate("/admin/broadcast")}>
           <Typography variant="h6" sx={{ color: darkMode ? "#aaa" : "#555" }}>
             Broadcast
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, color: darkMode ? "#bbb" : "#666" }}>
+            Announce updates
           </Typography>
         </Paper>
 
@@ -217,11 +248,17 @@ export default function AdminDashboard() {
           <Typography variant="h6" sx={{ color: darkMode ? "#aaa" : "#555" }}>
             Admin
           </Typography>
+          <Typography variant="body2" sx={{ mt: 1, color: darkMode ? "#bbb" : "#666" }}>
+            Roles and access
+          </Typography>
         </Paper>
 
         <Paper sx={panelStyle(darkMode)} onClick={() => navigate("/admin/upload")}>
           <Typography variant="h6" sx={{ color: darkMode ? "#aaa" : "#555" }}>
             Upload
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, color: darkMode ? "#bbb" : "#666" }}>
+            Video imports
           </Typography>
         </Paper>
       </Box>
@@ -274,6 +311,88 @@ export default function AdminDashboard() {
           )}
         </Box>
       </Paper>
+
+      <Box sx={{ mt: 4, display: "grid", gap: 3 }}>
+        <Paper sx={graphPanelStyle(darkMode)}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Content Metrics
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            {contentMetrics ? (
+              [
+                { label: "Modules", value: contentMetrics.total_modules },
+                { label: "Materials", value: contentMetrics.total_materials },
+                { label: "Lecturers", value: contentMetrics.total_lecturers },
+                { label: "Students", value: contentMetrics.total_students },
+                { label: "Help Requests", value: contentMetrics.total_help_requests },
+              ].map((item) => (
+                <Paper key={item.label} sx={panelStyle(darkMode)}>
+                  <Typography variant="body2" sx={{ color: darkMode ? "#aaa" : "#555" }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="h4" sx={{ mt: 1 }}>
+                    {item.value}
+                  </Typography>
+                </Paper>
+              ))
+            ) : (
+              <CircularProgress sx={{ color: textColor }} />
+            )}
+          </Box>
+        </Paper>
+
+        <Paper sx={graphPanelStyle(darkMode)}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Recent Activity
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          {activityLoading ? (
+            <CircularProgress sx={{ color: textColor }} />
+          ) : recentActivity.length === 0 ? (
+            <Typography>No recent activity.</Typography>
+          ) : (
+            <Box sx={{ display: "grid", gap: 1 }}>
+              {recentActivity.map((item, index) => (
+                <Box key={`${item.type}-${index}`} sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography>{item.summary}</Typography>
+                  <Typography sx={{ color: darkMode ? "#888" : "#666" }}>
+                    {new Date(item.created_at).toLocaleString()}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Paper>
+
+        <Paper sx={graphPanelStyle(darkMode)}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Help Request Logs
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          {activityLoading ? (
+            <CircularProgress sx={{ color: textColor }} />
+          ) : helpRequests.length === 0 ? (
+            <Typography>No help requests logged yet.</Typography>
+          ) : (
+            <Box sx={{ display: "grid", gap: 1.5 }}>
+              {helpRequests.map((request) => (
+                <Box key={request.id}>
+                  <Typography sx={{ fontWeight: 600 }}>
+                    {request.user_email} · {request.module_code || "General"}
+                  </Typography>
+                  <Typography sx={{ color: darkMode ? "#bbb" : "#666" }}>
+                    {request.message}
+                  </Typography>
+                  <Typography sx={{ color: darkMode ? "#777" : "#888", fontSize: "0.85rem" }}>
+                    {new Date(request.created_at).toLocaleString()}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Paper>
+      </Box>
     </Box>
   );
 }

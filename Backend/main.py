@@ -6,7 +6,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 
-from routers import auth, chat, videos, admin, notifications, playlists, storage, watch_history
+from routers import auth, chat, videos, admin, notifications, playlists, storage, watch_history, faculty, modules, help_requests
 from database import create_db_and_tables
 from notifications import notification_manager
 from search import router as search_router
@@ -60,6 +60,9 @@ app.include_router(notifications.router)
 app.include_router(playlists.router)
 app.include_router(storage.router)
 app.include_router(watch_history.router)
+app.include_router(faculty.router)
+app.include_router(modules.router)
+app.include_router(help_requests.router)
 app.include_router(search_router)
 
 # --- WebSocket ---

@@ -65,6 +65,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+    role: Optional[str] = None
+    institution_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Creates a new JWT access token."""
@@ -87,7 +90,12 @@ def verify_token(token: str) -> Optional[TokenData]:
         email: str = payload.get("sub")
         if email is None:
             return None
-        return TokenData(email=email)
+        return TokenData(
+            email=email,
+            role=payload.get("role"),
+            institution_id=payload.get("institution_id"),
+            user_id=payload.get("user_id"),
+        )
     except JWTError:
         return None
 
@@ -132,4 +140,24 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Operation not permitted. User is not an admin."
         )
+    return current_user
+
+
+def require_role(*allowed_roles: str):
+    def _guard(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted for this role."
+            )
+        return current_user
+
+    return _guard
+
+
+def get_lecturer_user(current_user: User = Depends(require_role("lecturer"))) -> User:
+    return current_user
+
+
+def get_student_user(current_user: User = Depends(require_role("student"))) -> User:
     return current_user

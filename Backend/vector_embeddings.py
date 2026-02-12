@@ -32,6 +32,16 @@ def generate_embedding_for_text(text: str) -> List[float]:
     return vec.astype(float).tolist()
 
 
+def generate_embeddings_for_texts(texts: List[str]) -> List[List[float]]:
+    cleaned = [(text or "").strip() for text in texts]
+    if not any(cleaned):
+        return [[] for _ in cleaned]
+
+    model = get_embedding_model()
+    vectors = model.encode(cleaned)
+    return [vec.astype(float).tolist() for vec in vectors]
+
+
 def generate_embedding_for_video(video: Video, session: Session) -> None:
     """
     Generate and store an embedding for a specific Video row.

@@ -26,6 +26,8 @@ import ChannelPage from "./pages/ChannelPage.jsx";
 import PlaylistPage from "./pages/PlaylistPage.jsx";
 import NotificationPage from "./pages/NotificationPage.jsx";
 import GoogleCallback from "./pages/GoogleCallback.jsx";
+import FacultyStudio from "./pages/FacultyStudio.jsx";
+import StudentWorkspace from "./pages/StudentWorkspace.jsx";
 
 // components
 import AdminRoute from "./components/AdminRoute.jsx";
@@ -103,6 +105,10 @@ export default function App() {
                 <Route path="settings/terms" element={<Terms />} />
                 <Route path="settings/help" element={<Help />} />
                 <Route path="settings/feedback" element={<Feedback />} />
+
+                {/* Faculty Studio */}
+                <Route path="faculty" element={<FacultyStudio />} />
+                <Route path="workspace" element={<StudentWorkspace />} />
 
                 {/* Admin routes */}
                 {/* --- FIX: Removed nested <MainLayout> inside AdminRoute --- */}
