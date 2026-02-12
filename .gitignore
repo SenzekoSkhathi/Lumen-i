@@ -5,6 +5,7 @@ env/
 .venv*/
 .venv312/
 __pycache__/
+lumeni.db
 
 # Environment variables (Secrets)
 .env
